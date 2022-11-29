@@ -1,6 +1,6 @@
 # @packetpay/express
 
-Express middleware for PacketPay
+Pay with Bitcoin for HTTP requests
 
 The code is available [on GitHub](https://github.com/p2ppsr/packetpay-express) and the package is published [on NPM](https://www.npmjs.com/package/@packetpay/express).
 
