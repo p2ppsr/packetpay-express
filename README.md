@@ -6,8 +6,16 @@ The code is available [on GitHub](https://github.com/p2ppsr/packetpay-express) a
 
 ## Overview
 
-[PacketPay](https://projectbabbage.com/packetpay) is a system for micropaymeent-based HTTPS request monetization.
+[PacketPay](https://projectbabbage.com/packetpay) is a system for micropayment-based HTTPS request monetization.
 **@packetpay/express** provides a way to easily add request monetization to the routes of an express server.
+
+The middleware relies on [Authrite](https://projectbabbage.com/authrite) for verifying the legitimacy of users. When users provide the `x-bsv-payment` header, the PackePay middleware processes and validates the payment.
+
+When no `x-bsv-payment` header is provided, the middleware terminates the request with a **402: Payment Required** error containing the amount for the payment.
+
+The format of the `x-bsv-payment` header is a JSON object containing a payment envelope that complies with a Babbage payment protocol. More details on this protocol are coming soon.
+
+There is a complementary client library called [@packetpay/js](https://github.com/p2ppsr/packetpay-js) that interfaces with this middleware and generates the correct payment information.
 
 ## Installation
 
@@ -98,16 +106,11 @@ The payment middleware should be installed after the Authrite middleware.
 
 #### Parameters
 
-*   `$0` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)**  (optional, default `{}`)
+*   `obj` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** All parameters are provided in an object (optional, default `{}`)
 
-    *   `$0.calculateRequestPrice`   (optional, default `()=>100`)
-    *   `$0.serverPrivateKey` &#x20;
-    *   `$0.ninjaConfig`   (optional, default `{}`)
-*   `obj` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** All parameters are provided in an object
-
+    *   `obj.calculateRequestPrice` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)?** A function that returns the price of the request in satoshis, given the request object as a parameter. If it returns a Promise, the middleware will wait for the Promise to resolve. If it returns 0, the middleware will proceed without requiring payment. (optional, default `()=>100`)
     *   `obj.serverPrivateKey` **[String](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** A hex-formatted 256-bit server private key. This should be the same key used to initialize the Authrite middleware.
-    *   `obj.calculateRequestPrice` **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)?** A function that returns the price of the request in satoshis, given the request object as a parameter. If it returns a Promise, the middleware will wait for the Promise to resolve. If it returns 0, the middleware will proceed without requiring payment.
-*   `ninjaConfig` **[object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)** Config object for the internal [UTXONinja](https://github.com/p2ppsr/utxoninja)
+    *   `obj.ninjaConfig` **[Object](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Object)?** Config object for the internal [UTXONinja](https://github.com/p2ppsr/utxoninja) (optional, default `{}`)
 
 Returns **[Function](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Statements/function)** The HTTP middleware that enforces a BSV payment
 
