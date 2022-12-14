@@ -29,7 +29,9 @@ This example demonstrates creating a simple express server that makes use of the
 const authrite = require('authrite-express')
 const PacketPay = require('@packetpay/express')
 const express = require('express')
+const bodyParser = require('body-parser')
 const app = express()
+app.use(bodyParser.json())
 const port = 5000
 
 const TEST_SERVER_PRIVATE_KEY = 
@@ -43,7 +45,7 @@ app.use(authrite.middleware({
 }))
 
 // Configure the express server to use the PacketPay middleware
-app.use(PacketPay.middleware({
+app.use(PacketPay({
     serverPrivateKey: TEST_SERVER_PRIVATE_KEY,
     ninjaConfig: {
       // Use the Babbage staging testnet Dojo
