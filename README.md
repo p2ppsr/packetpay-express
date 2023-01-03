@@ -31,12 +31,24 @@ const PacketPay = require('@packetpay/express')
 const express = require('express')
 const bodyParser = require('body-parser')
 const app = express()
-app.use(bodyParser.json())
 const port = 5000
-
 const TEST_SERVER_PRIVATE_KEY = 
 '6dcc124be5f382be631d49ba12f61adbce33a5ac14f6ddee12de25272f943f8b'
 const TEST_SERVER_BASEURL = `http://localhost:${port}`
+
+app.use(bodyParser.json())
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*')
+  res.header('Access-Control-Allow-Headers', '*')
+  res.header('Access-Control-Allow-Methods', '*')
+  res.header('Access-Control-Expose-Headers', '*')
+  res.header('Access-Control-Allow-Private-Network', 'true')
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200)
+  } else {
+    next()
+  }
+})
 
 // Before any PacketPay middleware, set up the server for Authrite
 app.use(authrite.middleware({
