@@ -8,7 +8,7 @@ jest.mock('utxoninja')
 
 const TEST_SERVER_PRIVATE_KEY = '430077830e91657893014e9b7cedd005f77d2801a3932cf0a79741acf2330ee1'
 
-let middleware, peiceCalculator, req, res, next, mockSubmitDirectTransaction, mockNinjaSubmitDirectTransaction
+let middleware, priceCalculator, req, res, next, mockSubmitDirectTransaction
 
 describe('PacketPay Server Middleware', () => {
   beforeEach(() => {
@@ -150,7 +150,7 @@ describe('PacketPay Server Middleware', () => {
         satoshisPaid: 0
       })
     })
-    it('Waits for a promise result from the price calculator', async () => {
+    it('Waits for a promise result from the price calculator with associated reference and envelope', async () => {
       priceCalculator.mockImplementation(async () => {
         await new Promise(resolve => setTimeout(resolve, 100))
         return 42
@@ -163,7 +163,17 @@ describe('PacketPay Server Middleware', () => {
       expect(next).toHaveBeenCalledTimes(1)
       expect(req.packetpay).toEqual({
         satoshisPaid: 42,
-        reference: 'mock_ref'
+        reference: 'mock_ref',
+        envelope: {
+          rawTx: 'mock_rw_tx',
+          inputs: 'mock_inputs',
+          mapiResponses: 'mock_mapi_responses',
+          outputs: [{
+            vout: 0,
+            satoshis: 100,
+            derivationSuffix: 'mock_ds'
+          }]
+        }
       })
     })
     it('Returns error 402 with the required payment amount when no X-BSV-Payment header is sent', async () => {
@@ -183,7 +193,7 @@ describe('PacketPay Server Middleware', () => {
         description: 'A BSV payment is required to complete this request. Provide the X-BSV-Payment header.'
       })
     })
-    it('Uses Ninja submitDirectTransaction to submit the X-BSV-Payment header', async () => {
+    it('Uses Ninja submitDirectTransaction to submit a normal correct X-BSV-Payment header', async () => {
       middleware = PacketPay({
         calculateRequestPrice: priceCalculator,
         serverPrivateKey: TEST_SERVER_PRIVATE_KEY
@@ -207,13 +217,13 @@ describe('PacketPay Server Middleware', () => {
         }
       })
     })
-    it('Returns 400 status if the BSV payment returns a malformed JSON header', async () => {
+    it('Returns 400 status when the sumitted BSV payment details return a malformed JSON header', async () => {
       // Mock an initial request with a different authrite version
       middleware = PacketPay({
         calculateRequestPrice: priceCalculator,
         serverPrivateKey: TEST_SERVER_PRIVATE_KEY
       })
-      mockReq = {
+      const mockReq = {
         authrite: {
           identityKey: 'mock_authrite_ik',
           certificates: []
@@ -221,7 +231,7 @@ describe('PacketPay Server Middleware', () => {
         headers: {
           'x-bsv-payment': 'malformed-payment'
         }
-      },
+      }
       await middleware(mockReq, res, next)
       expect(next).toHaveBeenCalledTimes(0)
       expect(res.status).toHaveBeenCalledWith(400)
@@ -231,36 +241,26 @@ describe('PacketPay Server Middleware', () => {
         description: 'The value of the X-BSV-Payment header is not valid JSON and cannot be parsed.'
       })
     })
-    it('Properly sets the packetpay paid response object with the correct reference and envelope, calling the next function', async () => {
+    it('Properly sets the res object with the correct reference and amount paid', async () => {
       middleware = PacketPay({
         calculateRequestPrice: priceCalculator,
         serverPrivateKey: TEST_SERVER_PRIVATE_KEY
       })
       await middleware(req, res, next)
       expect(next).toHaveBeenCalledTimes(1)
-      expect(res.set).toHaveBeenCalledWith({      
-        'x-bsv-payment-satoshis-paid': {
-        'reference': 'mock_ref',
-        'envelope': {
-          rawTx: 'mock_rw_tx',
-          inputs: 'mock_inputs',
-          mapiResponses: 'mock_mapi_responses',
-          outputs: [{
-            vout: 0,
-            satoshis: 100,
-            derivationSuffix: 'mock_ds'
-          }]
-        }}
+      expect(res.set).toHaveBeenCalledWith({
+        'x-bsv-payment-reference': 'mock_ref',
+        'x-bsv-payment-satoshis-paid': 100
       })
     })
-    it('Returns error 402 with the required x-bsv-payment-satoshis-paid header set and containing the packetpay reference and transaction envelope', async () => {
+    it('Throws a Payment not processed error when Ninja.submitDirectTransaction() returns a non-success value', async () => {
       Ninja.mockImplementation(() => {
         return {
           submitDirectTransaction: () => {
-            return({
+            return ({
               status: 'failed',
               reference: 'mock_ref'
-            })         
+            })
           }
         }
       })
@@ -268,35 +268,17 @@ describe('PacketPay Server Middleware', () => {
         calculateRequestPrice: priceCalculator,
         serverPrivateKey: TEST_SERVER_PRIVATE_KEY
       })
-      await middleware(req, res, next)
-      expect(next).toHaveBeenCalledTimes(0)
-      expect(res.status).toHaveBeenCalledWith(402)
-      expect(res.set).toHaveBeenCalledWith({      
-        'x-bsv-payment-satoshis-paid': {
-        'reference': 'mock_ref',
-        'envelope': {
-          rawTx: 'mock_rw_tx',
-          inputs: 'mock_inputs',
-          mapiResponses: 'mock_mapi_responses',
-          outputs: [{
-            vout: 0,
-            satoshis: 100,
-            derivationSuffix: 'mock_ds'
-          }]
-        }}
-      })
-      expect(res.json).toHaveBeenCalledWith({
-        status: 'error',
-        code: 'ERR_PAYMENT_FAILED',
-        reference: 'mock_ref',
-        description: 'Payment failed. A BSV payment is required to complete this request - Please resend payment.'
-      })
+      try {
+        await middleware(req, res, next)
+      } catch (error) {
+        expect(error).toBe(new Error('Payment not processed'))
+      }
     })
-    it('Returns error 400 with the associated error code when a BSV Payment failed', async () => {
+    it('Returns error 400 with the associated error code when a BSV Payment failed when Ninja.submitDirectTransaction() called', async () => {
       Ninja.mockImplementation(() => {
         return {
           submitDirectTransaction: () => {
-            let e = new Error('Bad thing')
+            const e = new Error('Bad thing')
             e.code = 'ERR_BAD_THING'
             throw e
           }
@@ -317,13 +299,13 @@ describe('PacketPay Server Middleware', () => {
     })
     it('Waits for a 0 fee returned from the price calculator', async () => {
       middleware = PacketPay({
-        calculateRequestPrice: () => {return 0},
+        calculateRequestPrice: () => { return 0 },
         serverPrivateKey: TEST_SERVER_PRIVATE_KEY
       })
       await middleware(req, res, next)
       expect(next).toHaveBeenCalledTimes(1)
       expect(req.packetpay).toEqual({
-        satoshisPaid: 0,
+        satoshisPaid: 0
       })
     })
   })
