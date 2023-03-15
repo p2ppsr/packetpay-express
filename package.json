@@ -1,6 +1,6 @@
 {
   "name": "@packetpay/express",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pay with Bitcoin for HTTP requests",
   "main": "src/PacketPay.js",
   "scripts": {
@@ -29,7 +29,9 @@
     "standard": "^17.0.0"
   },
   "standard": {
-    "env": [ "jest" ]
+    "env": [
+      "jest"
+    ]
   },
   "dependencies": {
     "utxoninja": "^0.2.49"
