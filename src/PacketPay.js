@@ -80,13 +80,14 @@ module.exports = ({
     }
     try {
       BSVPayment = JSON.parse(BSVPayment)
-    } catch (e) { // TODO: test this
+    } catch (e) {
       return res.status(400).json({
         status: 'error',
         code: 'ERR_MALFORMED_PAYMENT',
         description: 'The value of the X-BSV-Payment header is not valid JSON and cannot be parsed.'
       })
     }
+
     let paymentResult
     try {
       paymentResult = await ninja.submitDirectTransaction({
@@ -98,7 +99,20 @@ module.exports = ({
         transaction: BSVPayment.transaction
       })
       if (paymentResult.status !== 'success') {
-        throw new Error('Payment not processed')
+        return res
+          .status(402)
+          .set({
+            'x-bsv-payment-satoshis-paid': {
+              'reference': paymentResult.reference,
+              'envelope': BSVPayment.transaction
+            }
+          })
+          .json({
+            status: 'error',
+            code: 'ERR_PAYMENT_FAILED',
+            reference: paymentResult.reference,
+            description: 'Payment failed. A BSV payment is required to complete this request - Please resend payment.'
+          })
       }
     } catch (e) {
       return res.status(400).json({
@@ -106,12 +120,18 @@ module.exports = ({
         code: e.code || 'ERR_PAYMENT_FAILED',
         description: e.message
       })
-    }
+    }    
     req.packetpay = {
       satoshisPaid: requestPrice,
       reference: paymentResult.reference
     }
-    res.set('x-bsv-payment-reference', paymentResult.reference)
+    res.set({
+      'x-bsv-payment-satoshis-paid': 
+      {
+        'reference': paymentResult.reference,
+        'envelope': BSVPayment.transaction
+      }
+    })
     next()
   }
 }
