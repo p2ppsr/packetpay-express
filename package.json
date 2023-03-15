@@ -28,7 +28,10 @@
     "jest": "^29.1.2",
     "standard": "^17.0.0"
   },
+  "standard": {
+    "env": [ "jest" ]
+  },
   "dependencies": {
-    "utxoninja": "^0.2.42"
+    "utxoninja": "^0.2.49"
   }
 }
