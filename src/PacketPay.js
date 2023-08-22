@@ -2,14 +2,14 @@ const Ninja = require('utxoninja')
 
 /**
  * Initializes an instance of the BSV Payment Middleware.
- * 
+ *
  * The payment middleware should be installed after the Authrite middleware.
- * 
+ *
  * @param {Object} obj All parameters are provided in an object
  * @param {String} obj.serverPrivateKey A hex-formatted 256-bit server private key. This should be the same key used to initialize the Authrite middleware.
  * @param {Function} [obj.calculateRequestPrice] A function that returns the price of the request in satoshis, given the request object as a parameter. If it returns a Promise, the middleware will wait for the Promise to resolve. If it returns 0, the middleware will proceed without requiring payment.
  * @param {Object} [obj.ninjaConfig] Config object for the internal [UTXONinja](https://github.com/p2ppsr/utxoninja)
- * 
+ *
  * @returns {Function} The HTTP middleware that enforces a BSV payment
  */
 module.exports = ({
@@ -58,7 +58,6 @@ module.exports = ({
         description: 'An internal server error occurred while paying for this request.'
       })
     }
-    // TODO: Validate requestPrice
     if (requestPrice === 0) {
       req.packetpay = {
         satoshisPaid: 0
@@ -80,13 +79,14 @@ module.exports = ({
     }
     try {
       BSVPayment = JSON.parse(BSVPayment)
-    } catch (e) { // TODO: test this
+    } catch (e) {
       return res.status(400).json({
         status: 'error',
         code: 'ERR_MALFORMED_PAYMENT',
         description: 'The value of the X-BSV-Payment header is not valid JSON and cannot be parsed.'
       })
     }
+
     let paymentResult
     try {
       paymentResult = await ninja.submitDirectTransaction({
@@ -98,7 +98,9 @@ module.exports = ({
         transaction: BSVPayment.transaction
       })
       if (paymentResult.status !== 'success') {
-        throw new Error('Payment not processed')
+        const e = new Error('Payment not processed')
+        e.code = 'ERR_PAYMENT_FAILED'
+        throw e
       }
     } catch (e) {
       return res.status(400).json({
@@ -109,9 +111,13 @@ module.exports = ({
     }
     req.packetpay = {
       satoshisPaid: requestPrice,
-      reference: paymentResult.reference
+      reference: paymentResult.reference,
+      envelope: BSVPayment.transaction
     }
-    res.set('x-bsv-payment-reference', paymentResult.reference)
+    res.set({
+      'x-bsv-payment-reference': paymentResult.reference,
+      'x-bsv-payment-satoshis-paid': requestPrice
+    })
     next()
   }
 }
