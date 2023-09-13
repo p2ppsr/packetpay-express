@@ -2,9 +2,9 @@ global.self = global
 global.window = {}
 
 const PacketPay = require('../PacketPay.js')
-const Ninja = require('utxoninja')
+const { Ninja } = require('ninja-base')
 
-jest.mock('utxoninja')
+jest.mock('ninja-base')
 
 const TEST_SERVER_PRIVATE_KEY = '430077830e91657893014e9b7cedd005f77d2801a3932cf0a79741acf2330ee1'
 

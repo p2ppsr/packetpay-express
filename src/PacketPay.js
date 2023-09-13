@@ -1,4 +1,4 @@
-const Ninja = require('utxoninja')
+const { Ninja } = require('ninja-base')
 
 /**
  * Initializes an instance of the BSV Payment Middleware.
