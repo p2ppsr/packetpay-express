@@ -97,11 +97,6 @@ module.exports = ({
         derivationPrefix: BSVPayment.derivationPrefix,
         transaction: BSVPayment.transaction
       })
-      if (paymentResult.status !== 'success') {
-        const e = new Error('Payment not processed')
-        e.code = 'ERR_PAYMENT_FAILED'
-        throw e
-      }
     } catch (e) {
       return res.status(400).json({
         status: 'error',
