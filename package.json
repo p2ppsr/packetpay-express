@@ -34,6 +34,6 @@
     ]
   },
   "dependencies": {
-    "ninja-base": "^0.3.2"
+    "ninja-base": "^0.3.3"
   }
 }
