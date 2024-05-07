@@ -1,6 +1,6 @@
 {
   "name": "@packetpay/express",
-  "version": "0.2.26",
+  "version": "0.2.27",
   "description": "Pay with Bitcoin for HTTP requests",
   "main": "src/PacketPay.js",
   "scripts": {
